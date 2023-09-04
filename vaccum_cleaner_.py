@@ -157,6 +157,142 @@ def monkey_banana_problem(state: State, path: List[State], depth=0, max_depth=20
 solution = monkey_banana_problem(initial_state, [])
 solution
 
+from queue import PriorityQueue
+
+class Puzzle:
+    goal_state = [1, 2, 3, 4, 5, 6, 7, 8, 0]
+    heuristic = None
+    evaluation_function = None
+    needs_hueristic = False
+    num_of_instances = 0
+
+    def __init__(self, state, parent, action, path_cost, needs_hueristic=False):
+        self.parent = parent
+        self.state = state
+        self.action = action
+
+        if parent:
+            self.path_cost = parent.path_cost + path_cost
+        else:
+            self.path_cost = path_cost
+
+        if needs_hueristic:
+            self.needs_hueristic = True
+            self.generate_heuristic()
+            self.evaluation_function = self.heuristic + self.path_cost
+        Puzzle.num_of_instances += 1
+
+    def generate_heuristic(self):
+        self.heuristic = 0
+        for num in range(9):  # Adjusted range to include 0
+            if num == 0:  # Skip the blank tile in heuristic calculation
+                continue
+            distance = abs(self.state.index(num) - self.goal_state.index(num))
+            i = int(distance / 3)
+            j = int(distance % 3)
+            self.heuristic = self.heuristic + i + j
+
+    def goal_test(self):
+        if self.state == self.goal_state:
+            return True
+        return False
+
+    def generate_child(self):
+        children = []
+        x = self.state.index(0)
+        i = int(x / 3)
+        j = int(x % 3)
+        legal_actions = self.find_legal_actions(i, j)
+
+        for action in legal_actions:
+            new_state = self.state.copy()
+            if action == 'U':
+                new_state[x], new_state[x - 3] = new_state[x - 3], new_state[x]
+            elif action == 'D':
+                new_state[x], new_state[x + 3] = new_state[x + 3], new_state[x]
+            elif action == 'L':
+                new_state[x], new_state[x - 1] = new_state[x - 1], new_state[x]
+            elif action == 'R':
+                new_state[x], new_state[x + 1] = new_state[x + 1], new_state[x]
+            children.append(Puzzle(new_state, self, action, 1, self.needs_hueristic))
+        return children
+
+    def find_solution(self):
+        solution = []
+        solution.append(self.action)
+        path = self
+        while path.parent != None:
+            path = path.parent
+            solution.append(path.action)
+        solution = solution[:-1]
+        solution.reverse()
+        return solution
+
+    @staticmethod
+    def find_legal_actions(i, j):
+        legal_action = ['U', 'D', 'L', 'R']
+        if i == 0:
+            legal_action.remove('U')
+        elif i == 2:
+            legal_action.remove('D')
+        if j == 0:
+            legal_action.remove('L')
+        elif j == 2:
+            legal_action.remove('R')
+        return legal_action
+
+def A_star_search(initial_state):
+    count = 0
+    explored = []
+    start_node = Puzzle(initial_state, None, None, 0, True)
+    q = PriorityQueue()
+    q.put((start_node.evaluation_function, count, start_node))
+
+    while not q.empty():
+        node = q.get()[2]
+        explored.append(node.state)
+        if node.goal_test():
+            return node.find_solution()
+        children = node.generate_child()
+        for child in children:
+            if child.state not in explored:
+                count += 1
+                q.put((child.evaluation_function, count, child))
+    return
+
+def main():
+    initial_state = []
+    valid_input = False
+
+    print("Enter the initial state of the puzzle (row by row) using numbers 0-8:")
+
+    while not valid_input:
+        initial_state = []
+        try:
+            for _ in range(3):
+                row = list(map(int, input().split()))
+                if len(row) != 3:
+                    raise ValueError("Each row should contain exactly 3 numbers.")
+                initial_state.extend(row)
+
+            if sorted(initial_state) != list(range(9)):
+                raise ValueError("Invalid input. Please enter numbers from 0 to 8, each exactly once.")
+            valid_input = True
+        except ValueError as e:
+            print(str(e))
+            print("Try again.")
+
+    result = A_star_search(initial_state)
+    if result:
+        print("Solution found:")
+        for move in result:
+            print(move)
+    else:
+        print("No solution found.")
+
+if __name__ == '__main__':
+    main()
+
 class TicTacToe:
     def __init__(self):
         self.board = [[' ' for _ in range(3)] for _ in range(3)]
